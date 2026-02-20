@@ -1,0 +1,56 @@
+# ===========================================
+# SECURITY: Keep personal/sensitive data OUT
+# ===========================================
+
+# Personal config files (API tokens, paths, etc.)
+.env
+.env.*
+*.local
+config.local.*
+secrets.*
+
+# Any file with personal identifiers
+**/personal/
+**/*-personal.*
+**/*.secret
+**/*.secret.*
+
+# User-specific workspace overrides
+*.user.json
+.ws-config
+
+# ===========================================
+# Go
+# ===========================================
+
+# Binary
+ws
+workspace-cli
+
+# Claude Code
+.claude/
+
+# ===========================================
+# IDE/Editor
+# ===========================================
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# ===========================================
+# Project-specific
+# ===========================================
+
+# Backup files created by the CLI
+*.backup
+*.tmp
+
+# Local test workspaces
+test-workspaces/
+*.test.code-workspace
+
+# Personal planning files (belong in ~/vault/)
+DASHBOARD.md
