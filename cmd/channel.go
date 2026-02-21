@@ -15,16 +15,10 @@ var channelCmd = &cobra.Command{
 	Short: "Get or set Slack channel for a project",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		wsPath, err := resolveWorkspace()
+		wsPath, data, err := loadWorkspace()
 		if err != nil {
 			return err
 		}
-
-		data, err := ws.ReadWorkspace(wsPath)
-		if err != nil {
-			return err
-		}
-
 		folder := ws.FindFolder(data, args[0])
 		if folder == nil {
 			return fmt.Errorf("project not found: %s", args[0])

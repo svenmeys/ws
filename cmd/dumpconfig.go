@@ -17,16 +17,10 @@ var dumpConfigCmd = &cobra.Command{
 	Use:   "dump-config",
 	Short: "Dump workspace config as JSON",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		wsPath, err := resolveWorkspace()
+		wsPath, data, err := loadWorkspace()
 		if err != nil {
 			return err
 		}
-
-		data, err := ws.ReadWorkspace(wsPath)
-		if err != nil {
-			return err
-		}
-
 		folders := ws.GetFolders(data)
 		wsDir := filepath.Dir(wsPath)
 

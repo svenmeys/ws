@@ -36,16 +36,10 @@ var statusCmd = &cobra.Command{
 			return fmt.Errorf("select exactly one status flag")
 		}
 
-		wsPath, err := resolveWorkspace()
+		wsPath, data, err := loadWorkspace()
 		if err != nil {
 			return err
 		}
-
-		data, err := ws.ReadWorkspace(wsPath)
-		if err != nil {
-			return err
-		}
-
 		ok, err := ws.UpdateFolderStatus(data, args[0], selected)
 		if err != nil {
 			return err

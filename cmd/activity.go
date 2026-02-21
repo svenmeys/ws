@@ -15,8 +15,7 @@ var activityProject string
 var activityCmd = &cobra.Command{
 	Use:   "activity <state>",
 	Short: "Set activity indicator on workspace title",
-	Long:  "States: working (⚡), waiting (❓), idle (no indicator)",
-	Args:  cobra.ExactArgs(1),
+	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		state := args[0]
 		if _, ok := ws.Indicators[state]; !ok {
@@ -26,17 +25,10 @@ var activityCmd = &cobra.Command{
 			}
 			return fmt.Errorf("invalid state: %s (use: %s)", state, strings.Join(keys, ", "))
 		}
-
-		wsPath, err := resolveWorkspace()
+		wsPath, data, err := loadWorkspace()
 		if err != nil {
 			return err
 		}
-
-		data, err := ws.ReadWorkspace(wsPath)
-		if err != nil {
-			return err
-		}
-
 		var folder map[string]any
 		if activityProject != "" {
 			folder = ws.FindFolder(data, activityProject)

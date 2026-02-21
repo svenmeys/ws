@@ -15,16 +15,10 @@ var validateCmd = &cobra.Command{
 	Use:   "validate",
 	Short: "Validate workspace file structure",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		wsPath, err := resolveWorkspace()
+		wsPath, data, err := loadWorkspace()
 		if err != nil {
 			return err
 		}
-
-		data, err := ws.ReadWorkspace(wsPath)
-		if err != nil {
-			return err
-		}
-
 		wsDir := filepath.Dir(wsPath)
 		folders := ws.GetFolders(data)
 		channelIDs := make(map[string]bool)

@@ -17,16 +17,10 @@ var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all projects in the workspace",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		wsPath, err := resolveWorkspace()
+		_, data, err := loadWorkspace()
 		if err != nil {
 			return err
 		}
-
-		data, err := ws.ReadWorkspace(wsPath)
-		if err != nil {
-			return err
-		}
-
 		folders := ws.GetFolders(data)
 
 		if listJSON {

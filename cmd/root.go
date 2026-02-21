@@ -19,7 +19,6 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&workspacePath, "workspace", "w", "", "workspace file path")
 }
 
-// Execute runs the root command.
 func Execute() error {
 	return rootCmd.Execute()
 }
@@ -29,4 +28,16 @@ func resolveWorkspace() (string, error) {
 		return workspacePath, nil
 	}
 	return ws.GetDefaultWorkspace()
+}
+
+func loadWorkspace() (string, map[string]any, error) {
+	wsPath, err := resolveWorkspace()
+	if err != nil {
+		return "", nil, err
+	}
+	data, err := ws.ReadWorkspace(wsPath)
+	if err != nil {
+		return "", nil, err
+	}
+	return wsPath, data, nil
 }

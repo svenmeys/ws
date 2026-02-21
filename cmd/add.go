@@ -15,16 +15,10 @@ var addCmd = &cobra.Command{
 	Short: "Add a new project to the workspace",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		wsPath, err := resolveWorkspace()
+		wsPath, data, err := loadWorkspace()
 		if err != nil {
 			return err
 		}
-
-		data, err := ws.ReadWorkspace(wsPath)
-		if err != nil {
-			return err
-		}
-
 		if ws.FindFolder(data, args[0]) != nil {
 			return fmt.Errorf("project with path '%s' already exists", args[0])
 		}
