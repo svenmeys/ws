@@ -1,8 +1,10 @@
-# ws
+# ws — World Serpent
 
 > *"I've seen things you people wouldn't believe... twenty-one projects across four workspaces, all connected by a single command."*
 
 **Your workspace's central nervous system.** One binary. Zero dependencies. Instant channel-to-project routing.
+
+Named after [Jörmungandr](https://en.wikipedia.org/wiki/J%C3%B6rmungandr), the World Serpent of Norse mythology — the serpent so vast it wraps around all of Midgard and bites its own tail, connecting everything. That's what `ws` does for your projects.
 
 ## Why This Exists
 
