@@ -1,95 +1,44 @@
 # Workspace CLI (`ws`)
 
-CLI for managing VS Code workspace files. Single binary, zero runtime dependencies.
+Single-binary Go CLI for managing VS Code `.code-workspace` files. Extends them with `x-pa` custom fields for project metadata (Slack channels, status, descriptions) that VS Code ignores.
 
-## Install
-
-```bash
-go install github.com/svenmeys/workspace-cli@latest
-# Binary installs as 'workspace-cli', rename to 'ws':
-cp "$(go env GOPATH)/bin/workspace-cli" /usr/local/bin/ws
-```
-
-## Quick Reference
-
-```bash
-# List projects
-ws list
-ws list --json  # Machine-readable output
-
-# Add a project
-ws add ./my-project --name "🟢 My Project" --slack C0ABC123 --desc "Description"
-
-# Update status
-ws status my-project --active    # 🟢
-ws status my-project --progress  # 🔵
-ws status my-project --paused    # 🟡
-ws status my-project --blocked   # 🔴
-ws status my-project --dormant   # ⚪
-
-# Slack channel management
-ws channel my-project                    # Get channel
-ws channel my-project --set C0ABC123     # Set channel
-
-# Config dump for daemons
-ws dump-config                           # Full config as JSON
-ws dump-config --section channels        # Just channel mappings
-ws dump-config --section projects        # Just project list
-
-# Resolve channel to project path
-ws resolve-channel C0ABC123              # Returns absolute path
-
-# Validation
-ws validate
-
-# Shell completions (built-in via cobra)
-ws completion bash
-ws completion zsh
-ws completion fish
-```
-
-## Environment Variables
-
-- `WS_WORKSPACE` - Path to workspace file (default: auto-detect from cwd, then first `*.code-workspace` in `~/workspaces/`)
-- `WS_WORKSPACES_DIR` - Directory containing workspace files (default: `~/workspaces/`)
-- `WS_CAPABILITIES` - Path to capabilities.yaml for sync
+See [AGENTS.md](AGENTS.md) for agent integration details.
 
 ## Project Structure
 
 ```
 main.go
-cmd/                           # Command definitions (cobra)
-  root.go, list.go, add.go, status.go, channel.go,
-  dumpconfig.go, syncchannels.go, listall.go,
-  resolvechannel.go, validate.go, activity.go, hook.go
+cmd/                           # Cobra command definitions (12 commands)
+  root.go                      # loadWorkspace() helper, flag setup
+  list.go, add.go, status.go, channel.go, dumpconfig.go,
+  syncchannels.go, listall.go, resolvechannel.go,
+  validate.go, activity.go, hook.go
 internal/workspace/            # Core business logic
-  config.go, workspace.go, sync.go, hooks.go
+  workspace.go                 # Read/write workspace, folder ops, status updates
+  config.go                    # Workspace discovery, path resolution
+  hooks.go                     # Activity indicators, Claude Code hook handling
+  sync.go                      # Sync channel mappings to capabilities.yaml
+hooks/                         # Claude Code hook config (copy to ~/.claude/settings.json)
+  claude-code.json             # Hook definitions for activity indicators
 ```
 
-## For Agents
+## Key Patterns
 
-1. **Prefer `--json` output** for parsing: `ws list --json`
-2. **Use `dump-config`** to get all workspace info in one call
-3. **Project matching is fuzzy** - partial path or name works
-4. **Status emojis are automatic** - just use `--active`, `--blocked`, etc.
+- **`loadWorkspace()`** in `cmd/root.go` — shared helper used by 7 commands to resolve + read workspace
+- **`map[string]any`** throughout — workspace data is dynamic JSON, not typed structs (VS Code workspace format varies)
+- **Atomic writes** — `WriteWorkspace` uses temp file + `os.Rename` with `.backup` of previous version
+- **Fuzzy matching** — `FindFolder` matches by path substring or emoji-stripped case-insensitive name
+- **JSONC support** — `hujson.Standardize` strips comments before JSON parsing
 
-## x-pa Custom Fields
+## Environment Variables
 
-The workspace file supports custom fields prefixed with `x-pa`:
+- `WS_WORKSPACE` — explicit workspace file path (skips auto-detect)
+- `WS_WORKSPACES_DIR` — where to find `*.code-workspace` files (default `~/workspaces/`)
+- `WS_CAPABILITIES` — sync target for channel mappings
 
-```json
-{
-  "folders": [
-    {
-      "path": "./my-project",
-      "name": "🟢 My Project",
-      "x-pa": {
-        "slack_channel": "C0ABC123",
-        "description": "Project description"
-      }
-    }
-  ]
-}
+## Testing
+
+```bash
+go test ./...    # 50 tests in internal/workspace/
+go build .       # Single binary, no CGO
 ```
-
-VS Code ignores these fields. They're used for agent workflows.

@@ -4,16 +4,26 @@
 
 **Your workspace's central nervous system.** One binary. Zero dependencies. Instant channel-to-project routing.
 
-Nexus manages VS Code `.code-workspace` files — mapping Slack channels to projects, tracking status, and giving your agents a single source of truth. Built for humans who run too many projects and the agents that help them.
+## Why This Exists
+
+I run 20+ projects across multiple VS Code workspaces. I also run an AI personal assistant daemon that receives Slack messages and needs to figure out which project they belong to. The question was always: **where does this channel ID map to?**
+
+The answer used to be a hand-maintained YAML file. That broke constantly.
+
+The fix: extend the VS Code `.code-workspace` file with custom fields (`x-pa`) that VS Code silently ignores, then build a CLI to query it. The workspace file becomes the single source of truth for project metadata — names, status, Slack channels, descriptions. No separate config. No database. Just JSON that VS Code already renders.
+
+My PA daemon now calls `ws resolve-channel C0ABC123` and gets back `/Users/me/Projects/my-project`. Done.
 
 ## Install
 
 ```bash
-# From source
 go install github.com/svenmeys/workspace-cli@latest
 cp "$(go env GOPATH)/bin/workspace-cli" /usr/local/bin/ws
+```
 
-# Or just build it
+Or build from source:
+
+```bash
 git clone https://github.com/svenmeys/workspace-cli.git
 cd workspace-cli && go build -o /usr/local/bin/ws .
 ```
@@ -21,42 +31,41 @@ cd workspace-cli && go build -o /usr/local/bin/ws .
 ## Usage
 
 ```bash
-# What's in the workspace?
-ws list
-ws list --json              # For agents
+ws list                              # What's in the workspace?
+ws list --json                       # Machine-readable
 
-# Add a project
 ws add ./my-project --name "🟢 My Project" --slack C0ABC123
 
-# Route a Slack channel to its project
-ws resolve-channel C0ABC123
-# → /Users/you/Projects/my-project
+ws resolve-channel C0ABC123          # → /absolute/path/to/project
 
-# Update project status
-ws status my-project --active     # 🟢
-ws status my-project --blocked    # 🔴
-ws status my-project --paused     # 🟡
-ws status my-project --progress   # 🔵
+ws status my-project --active        # 🟢
+ws status my-project --blocked       # 🔴
+ws status my-project --paused        # 🟡
+ws status my-project --progress      # 🔵
+ws status my-project --dormant       # ⚪
 
-# Channel management
-ws channel my-project             # Get channel ID
-ws channel my-project --set C0X   # Set channel ID
+ws channel my-project                # Get channel ID
+ws channel my-project --set C0X      # Set channel ID
 
-# Dump everything for scripts/daemons
-ws dump-config --section channels
+ws dump-config                       # Full JSON for scripts/daemons
+ws dump-config --section channels    # Just channel mappings
+ws dump-config --section projects    # Just project list
 
-# Validate workspace integrity
-ws validate
+ws validate                          # Check workspace integrity
 
-# Shell completions
-ws completion zsh >> ~/.zshrc
+ws list-all                          # All workspaces, all projects
+
+ws activity working --project foo    # Set activity indicator (⚡/❓)
+ws hook                              # Claude Code hook handler (stdin)
+
+ws completion zsh >> ~/.zshrc        # Shell completions
 ```
 
 ## How It Works
 
-Nexus reads and writes VS Code `.code-workspace` files, extending them with `x-pa` custom fields that VS Code silently ignores:
+Nexus reads and writes VS Code `.code-workspace` files, extending them with `x-pa` custom fields:
 
-```json
+```jsonc
 {
   "folders": [
     {
@@ -71,7 +80,7 @@ Nexus reads and writes VS Code `.code-workspace` files, extending them with `x-p
 }
 ```
 
-Your workspace file becomes the single source of truth. No separate config. No database. Just JSON that VS Code already knows how to render.
+VS Code ignores `x-pa`. Your agents and scripts don't.
 
 ## Environment Variables
 
@@ -81,13 +90,26 @@ Your workspace file becomes the single source of truth. No separate config. No d
 | `WS_WORKSPACES_DIR` | `~/workspaces/` | Directory containing workspace files |
 | `WS_CAPABILITIES` | `~/.config/workspace-cli/capabilities.yaml` | Sync target for channel mappings |
 
+## Claude Code Integration
+
+Nexus includes a `hook` command that reads Claude Code hook events from stdin and updates project activity indicators in real-time:
+
+- **⚡** when Claude is working (tool calls, subagents)
+- **❓** when Claude is waiting (permission prompts, idle prompts)
+- Cleared when idle or session ends
+
+This shows up directly in VS Code's sidebar — you can see which project Claude is actively working on.
+
+Ready-to-use hook configuration is in [`hooks/`](hooks/). Merge `hooks/claude-code.json` into your `~/.claude/settings.json` to enable it globally.
+
 ## For Agents
 
-- **Always use `--json`** — structured output, no surprises
-- **`dump-config`** gives you everything in one call
-- **`resolve-channel`** is your hot path — channel ID in, project path out
-- **Project matching is fuzzy** — partial names and paths work
-- **`ws hook`** reads Claude Code events from stdin for real-time status
+See [AGENTS.md](AGENTS.md) for integration details. The short version:
+
+- Use `--json` for structured output
+- `dump-config` gives you everything in one call
+- `resolve-channel` is your hot path — channel ID in, project path out
+- Project matching is fuzzy — partial names and paths work
 
 ## License
 

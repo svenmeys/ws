@@ -1,84 +1,112 @@
-# Workspace CLI
+# Agent Integration Guide
 
-CLI tool for managing VS Code workspace files with agent integration.
+How to use `ws` in your agent, daemon, or automation.
 
-## Overview
-
-`ws` is a Go CLI that manipulates VS Code `.code-workspace` files, adding custom `x-pa` fields for agent workflows (Slack channel mappings, project metadata). Single binary, zero runtime dependencies.
-
-## Tech Stack
-
-- **Language**: Go 1.22+
-- **CLI Framework**: Cobra
-- **JSON Handling**: hujson (JSONC/HuJSON support)
-- **Config**: gopkg.in/yaml.v3
-- **Build**: `go build`
-
-## Action Execution (CRITICAL)
-
-*Execute first. Report completed actions. Never promise future actions.*
-
-| DON'T | DO |
-|-------|-----|
-| "I will read the file" | [Read tool] → "Read complete: found X" |
-| "Let me delegate this" | [Task tool] → "Delegated to Explore agent" |
-
-Tool calls come BEFORE response text. Observable results only.
-
----
-
-## Key Files
-
-```
-main.go                        # Entry point
-cmd/                           # Command definitions (one per file)
-  root.go                      # Root command, shared helpers
-  list.go, add.go, status.go   # Project management
-  channel.go, dumpconfig.go    # Config operations
-  resolvechannel.go            # Channel → project lookup
-  activity.go, hook.go         # Claude Code integration
-internal/workspace/            # Business logic
-  config.go                    # Environment-based configuration
-  workspace.go                 # Core workspace file operations
-  sync.go                      # Export to capabilities.yaml
-  hooks.go                     # Claude Code hooks
-```
-
-## Commands Reference
+## Channel Resolution (Primary Use Case)
 
 ```bash
-ws list              # List projects
-ws list-all          # List all workspaces and projects
-ws add <path>        # Add project to workspace
-ws status <project>  # Update status emoji
-ws channel <project> # Get/set Slack channel
-ws dump-config       # Export config as JSON
-ws validate          # Validate workspace file
-ws resolve-channel   # Get project path for channel ID
-ws activity          # Set activity indicator
-ws hook              # Claude Code hook handler
-ws completion        # Shell completions (bash/zsh/fish)
+ws resolve-channel C0ABC123
+# stdout: /absolute/path/to/project
+# exit 0 on success, exit 1 if not found
+
+ws resolve-channel C0ABC123 --json
+# {"channel":"C0ABC123","path":"/absolute/path","workspace":"/path/to.code-workspace"}
 ```
 
-## Environment Variables
+This scans **all** workspace files in `$WS_WORKSPACES_DIR` (default `~/workspaces/`). A channel mapped in any workspace will be found.
 
-- `WS_WORKSPACE` - Path to workspace file
-- `WS_WORKSPACES_DIR` - Directory containing workspace files (default: `~/workspaces/`)
-- `WS_CAPABILITIES` - Path to capabilities.yaml for sync
-
-## Integration Points
-
-- **Daemon integration**: Use `ws resolve-channel` for channel→project lookup
-- **Config export**: `ws dump-config` for machine-readable workspace state
-- **Claude Code hooks**: `ws hook` reads stdin for event-driven title updates
-
-## Building
+## Querying Projects
 
 ```bash
-go build -o ws .
-go install .  # Installs as 'workspace-cli' to GOPATH/bin
+# All projects as JSON array
+ws list --json
+# [{"name":"🟢 My Project","path":"./my-project","slack_channel":"C0ABC123","description":"..."}]
+
+# Everything in one call (projects + channel mappings)
+ws dump-config
+# {"workspace_path":"...","projects":[...],"channel_mappings":{"C0ABC123":"./my-project"}}
+
+# Just channel mappings
+ws dump-config --section channels
+# {"C0ABC123":"./my-project","C0DEF456":"./other"}
+
+# Just projects
+ws dump-config --section projects
 ```
 
----
+## Modifying State
 
-*Last updated: 2026-02-20*
+```bash
+# Set project status
+ws status my-project --active     # 🟢
+ws status my-project --blocked    # 🔴
+
+# Link a Slack channel
+ws channel my-project --set C0ABC123
+
+# Add a new project
+ws add ./path --name "🟢 Name" --slack C0ABC123 --desc "Description"
+```
+
+Writes are atomic (temp file + rename) with automatic backup (`.backup` file).
+
+## Activity Indicators
+
+For real-time "who's working on what" in VS Code sidebar:
+
+```bash
+ws activity working --project my-project   # Adds ⚡
+ws activity waiting --project my-project   # Adds ❓
+ws activity idle --project my-project      # Clears indicator
+```
+
+## Claude Code Hook
+
+The `hook` command reads Claude Code hook events from stdin and auto-updates activity indicators.
+
+**Quick setup:** Merge [`hooks/claude-code.json`](hooks/claude-code.json) into `~/.claude/settings.json`. See [`hooks/README.md`](hooks/README.md) for details.
+
+Input format:
+```json
+{"hook_event_name": "PreToolUse", "cwd": "/path/to/project"}
+```
+
+Events → indicators:
+- `PreToolUse`, `SubagentStart`, `UserPromptSubmit` → `working` (⚡)
+- `Notification` (idle/permission), `PermissionRequest` → `waiting` (❓)
+- `Stop`, `PostToolUse`, `SubagentStop`, `SessionEnd` → `idle` (clear)
+
+## Fuzzy Matching
+
+Project arguments match against both path and name (case-insensitive, emoji-stripped):
+
+```bash
+ws channel slop          # Matches "./Projects/slop"
+ws channel "Project B"   # Matches "🔵 Project B"
+ws channel asyncbot      # Matches "./asyncmode/asyncbot"
+```
+
+## Workspace Auto-Detection
+
+Resolution order:
+1. `--workspace` flag or `$WS_WORKSPACE` env var
+2. Scan `$WS_WORKSPACES_DIR` for workspace containing current directory
+3. First `*.code-workspace` file in `$WS_WORKSPACES_DIR` (alphabetical)
+
+## Custom Fields
+
+Metadata lives in `x-pa` inside each folder entry. VS Code ignores it.
+
+```jsonc
+{
+  "path": "./my-project",
+  "name": "🟢 My Project",
+  "x-pa": {
+    "slack_channel": "C0ABC123",
+    "description": "Project description"
+  }
+}
+```
+
+Read fields: `ws list --json` or `ws dump-config`.
+Write fields: `ws channel --set`, `ws add --slack/--desc`, or edit the workspace file directly.
