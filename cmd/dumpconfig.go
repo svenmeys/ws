@@ -8,7 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	ws "github.com/svenmeys/workspace-cli/internal/workspace"
+	ws "github.com/svenmeys/ws/internal/workspace"
 )
 
 var dumpSection string

@@ -1,4 +1,4 @@
-module github.com/svenmeys/workspace-cli
+module github.com/svenmeys/ws
 
 go 1.23
 

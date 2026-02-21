@@ -1,4 +1,4 @@
-# Nexus
+# ws
 
 > *"I've seen things you people wouldn't believe... twenty-one projects across four workspaces, all connected by a single command."*
 
@@ -17,15 +17,15 @@ My PA daemon now calls `ws resolve-channel C0ABC123` and gets back `/Users/me/Pr
 ## Install
 
 ```bash
-go install github.com/svenmeys/workspace-cli@latest
-cp "$(go env GOPATH)/bin/workspace-cli" /usr/local/bin/ws
+go install github.com/svenmeys/ws@latest
+cp "$(go env GOPATH)/bin/ws" /usr/local/bin/ws
 ```
 
 Or build from source:
 
 ```bash
-git clone https://github.com/svenmeys/workspace-cli.git
-cd workspace-cli && go build -o /usr/local/bin/ws .
+git clone https://github.com/svenmeys/ws.git
+cd ws && go build -o /usr/local/bin/ws .
 ```
 
 ## Usage
@@ -63,7 +63,7 @@ ws completion zsh >> ~/.zshrc        # Shell completions
 
 ## How It Works
 
-Nexus reads and writes VS Code `.code-workspace` files, extending them with `x-pa` custom fields:
+`ws` reads and writes VS Code `.code-workspace` files, extending them with `x-pa` custom fields:
 
 ```jsonc
 {
@@ -92,7 +92,7 @@ VS Code ignores `x-pa`. Your agents and scripts don't.
 
 ## Claude Code Integration
 
-Nexus includes a `hook` command that reads Claude Code hook events from stdin and updates project activity indicators in real-time:
+`ws` includes a `hook` command that reads Claude Code hook events from stdin and updates project activity indicators in real-time:
 
 - **⚡** when Claude is working (tool calls, subagents)
 - **❓** when Claude is waiting (permission prompts, idle prompts)
