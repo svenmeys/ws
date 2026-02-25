@@ -42,8 +42,13 @@ var resolveChannelCmd = &cobra.Command{
 			}
 
 			mappings := ws.GetChannelMappings(data)
-			if relPath, ok := mappings[channelID]; ok {
-				absPath, _ := filepath.Abs(filepath.Join(filepath.Dir(wsPath), relPath))
+			if projPath, ok := mappings[channelID]; ok {
+				var absPath string
+				if filepath.IsAbs(projPath) {
+					absPath = projPath
+				} else {
+					absPath, _ = filepath.Abs(filepath.Join(filepath.Dir(wsPath), projPath))
+				}
 				if resolveJSON {
 					enc := json.NewEncoder(os.Stdout)
 					enc.SetIndent("", "  ")
